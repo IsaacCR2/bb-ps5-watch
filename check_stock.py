@@ -25,6 +25,7 @@ from datetime import datetime, timezone, timedelta
 # ---------------------------------------------------------------- configuration
 
 PRODUCTS = {
+    "19491570": {"nom": "TEST manette DualSense", "prix": "0 $", "url": "https://www.bestbuy.ca/en-ca/product/19491570"},
     "19446111": {
         "nom": "PS5 Slim 1 To (lecteur de disque)",
         "prix": "824,14 $",
