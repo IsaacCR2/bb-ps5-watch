@@ -47,9 +47,18 @@ PRODUCTS = {
     },
 }
 
+# Magasins Best Buy autour de Quebec (code postal G1R), captures depuis le
+# site. Sans le parametre "accept" ci-dessous, l'API ignore "locations" et
+# renvoie pickup=NotAvailable pour tout : les deux vont ensemble.
+LOCATIONS = ["335", "336", "907", "334", "313", "906", "271"]
+
 AVAILABILITY_URL = (
     "https://www.bestbuy.ca/ecomm-api/availability/products"
-    "?accept-language=en-CA&skus={skus}&postalCode={postal}"
+    "?accept=application%2Fvnd.bestbuy.standardproduct.v1%2Bjson"
+    "&accept-language=en-CA"
+    "&locations={locations}"
+    "&postalCode={postal}"
+    "&skus={skus}"
 )
 
 USER_AGENT = (
@@ -94,7 +103,9 @@ def save_state(state):
 def fetch_availability():
     """Retourne {sku: {"online": bool, "pickup": bool, "statut": str}}."""
     url = AVAILABILITY_URL.format(
-        skus="%7C".join(PRODUCTS.keys()), postal=POSTAL_CODE
+        skus="%7C".join(PRODUCTS.keys()),
+        postal=POSTAL_CODE,
+        locations="%7C".join(LOCATIONS),
     )
     req = urllib.request.Request(
         url,
@@ -113,9 +124,17 @@ def fetch_availability():
         sku = str(entry.get("sku"))
         shipping = entry.get("shipping") or {}
         pickup = entry.get("pickup") or {}
+        magasins = [
+            {"nom": loc.get("name", "?"), "qte": loc.get("quantityOnHand", 0)}
+            for loc in (pickup.get("locations") or [])
+            if loc.get("hasInventory")
+        ]
         result[sku] = {
             "online": bool(shipping.get("purchasable")),
-            "pickup": bool(pickup.get("purchasable")),
+            "pickup": bool(magasins) or bool(pickup.get("purchasable")),
+            # Detail non conserve dans state.json : les quantites bougent sans
+            # cesse et feraient committer le workflow a chaque execution.
+            "magasins": magasins,
             "statut": "{} / {}".format(
                 shipping.get("status", "?"), pickup.get("status", "?")
             ),
@@ -188,14 +207,21 @@ def evaluer(state, dispo):
                 canaux.append("livraison en ligne")
             if courant["pickup"]:
                 canaux.append("cueillette en magasin")
+            detail = ""
+            if courant.get("magasins"):
+                detail = "\nMagasins : " + ", ".join(
+                    "{} ({})".format(m["nom"], m["qte"])
+                    for m in courant["magasins"]
+                )
             corps = (
                 "{nom} — {prix}\n"
-                "Disponible : {canaux}\n\n"
+                "Disponible : {canaux}{detail}\n\n"
                 "Vas-y tout de suite, ça part vite.\n{url}"
             ).format(
                 nom=info["nom"],
                 prix=info["prix"],
                 canaux=" + ".join(canaux),
+                detail=detail,
                 url=info["url"],
             )
             ntfy(
