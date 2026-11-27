@@ -1,0 +1,54 @@
+name: Surveillance PS5 Best Buy
+
+on:
+  schedule:
+    # Aux 5 minutes. GitHub n'est pas ponctuel a la minute : les executions
+    # planifiees peuvent etre retardees quand la file est chargee. La boucle
+    # interne du script (CHECK_ROUNDS) comble les trous.
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+# Une seule execution a la fois, sinon deux jobs ecrivent state.json en meme temps.
+concurrency:
+  group: surveillance-ps5
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  verifier:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Recuperer le depot
+        uses: actions/checkout@v4
+
+      - name: Verifier la disponibilite
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          NTFY_SERVER: ${{ vars.NTFY_SERVER || 'https://ntfy.sh' }}
+          POSTAL_CODE: ${{ vars.POSTAL_CODE || 'G1S1A1' }}
+          CHECK_ROUNDS: "9"
+          ROUND_DELAY: "30"
+        run: python3 check_stock.py
+
+      - name: Sauvegarder l'etat
+        run: |
+          if [ -z "$(git status --porcelain state.json)" ]; then
+            echo "Aucun changement d'etat, rien a committer."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add state.json
+          git commit -m "etat: mise a jour de la disponibilite"
+          # Un autre job a pu pousser entre-temps : on rebase avant de pousser.
+          for i in 1 2 3; do
+            git pull --rebase --autostash origin "${GITHUB_REF_NAME}" && git push && exit 0
+            echo "Nouvelle tentative $i..."
+            sleep 5
+          done
+          echo "Impossible de pousser l'etat apres 3 tentatives." >&2
+          exit 1
