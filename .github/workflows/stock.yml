@@ -52,3 +52,22 @@ jobs:
           done
           echo "Impossible de pousser l'etat apres 3 tentatives." >&2
           exit 1
+
+      - name: Heartbeat quotidien
+        run: |
+          TODAY=$(date -u +%F)
+          if [ "$(cat .heartbeat 2>/dev/null)" = "$TODAY" ]; then
+            echo "Heartbeat deja fait aujourd'hui."
+            exit 0
+          fi
+          echo "$TODAY" > .heartbeat
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .heartbeat
+          git commit -m "heartbeat $TODAY"
+          for i in 1 2 3; do
+            git pull --rebase --autostash origin "${GITHUB_REF_NAME}" && git push && exit 0
+            echo "Nouvelle tentative $i..."
+            sleep 5
+          done
+          echo "Heartbeat non pousse, sans consequence sur la surveillance." >&2
