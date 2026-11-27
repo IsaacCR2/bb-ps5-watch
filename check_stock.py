@@ -211,11 +211,20 @@ def evaluer(state, dispo):
         if est_dispo != etait_dispo:
             change = True
 
+        # "vu" ne bouge que si quelque chose a change, sinon state.json
+        # differe a chaque execution et le workflow commit pour rien.
+        identique = (
+            precedent.get("online") == courant["online"]
+            and precedent.get("pickup") == courant["pickup"]
+            and precedent.get("statut") == courant["statut"]
+            and precedent.get("vu")
+        )
         produits[sku] = {
             "online": courant["online"],
             "pickup": courant["pickup"],
             "statut": courant["statut"],
-            "vu": datetime.now(EASTERN).isoformat(timespec="seconds"),
+            "vu": precedent["vu"] if identique
+            else datetime.now(EASTERN).isoformat(timespec="seconds"),
         }
 
     return change
