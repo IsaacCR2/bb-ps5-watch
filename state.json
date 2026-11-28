@@ -1,1 +1,30 @@
-{"produits": {}, "echecs": 0, "echec_signale": false}
+{
+  "echec_signale": false,
+  "echecs": 0,
+  "produits": {
+    "18477929": {
+      "online": false,
+      "pickup": false,
+      "statut": "SoldOutOnline / OutOfStock",
+      "vu": "2026-11-27T19:11:10-05:00"
+    },
+    "19446111": {
+      "online": false,
+      "pickup": false,
+      "statut": "SoldOutOnline / OutOfStock",
+      "vu": "2026-11-27T19:11:10-05:00"
+    },
+    "19446112": {
+      "online": false,
+      "pickup": false,
+      "statut": "SoldOutOnline / OutOfStock",
+      "vu": "2026-11-27T19:11:10-05:00"
+    },
+    "19492009": {
+      "online": false,
+      "pickup": false,
+      "statut": "SoldOutOnline / OutOfStock",
+      "vu": "2026-11-27T19:11:10-05:00"
+    }
+  }
+}
